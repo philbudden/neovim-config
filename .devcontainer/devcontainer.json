@@ -1,0 +1,15 @@
+{
+  "name": "neovim-config",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": false,
+      "configureZshAsDefaultShell": false,
+      "installOhMyZsh": false,
+      "installOhMyZshConfig": false
+    },
+    "ghcr.io/devcontainers-extra/features/neovim-homebrew:1": {}
+  },
+  "remoteUser": "vscode",
+  "postCreateCommand": "mkdir -p ~/.config && rm -rf ~/.config/nvim && ln -s ${containerWorkspaceFolder} ~/.config/nvim && nvim --version | head -n 1"
+}
