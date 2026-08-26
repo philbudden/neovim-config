@@ -11,6 +11,7 @@ This repository is maintained as an independent configuration and does not prese
 ├── init.lua
 ├── lua/
 │   └── nvim_config/
+│       ├── plugins.lua
 │       └── health.lua
 └── .devcontainer/
     ├── Dockerfile
@@ -18,7 +19,7 @@ This repository is maintained as an independent configuration and does not prese
     └── setup.sh
 ```
 
-`init.lua` is the main configuration. Keep changes there unless a separate module removes real complexity.
+`init.lua` owns editor-wide options, basic keymaps and basic autocommands. `lua/nvim_config/plugins.lua` owns `lazy.nvim` bootstrap, plugin declarations and plugin-specific configuration.
 
 ## Install
 
@@ -34,16 +35,16 @@ Then start Neovim:
 nvim
 ```
 
-Plugins are managed with Neovim's built-in `vim.pack` support. To inspect plugin state without applying updates:
+Plugins are managed with `lazy.nvim`. To open the package manager:
 
 ```vim
-:lua vim.pack.update(nil, { offline = true })
+:Lazy
 ```
 
 To fetch plugin updates:
 
 ```vim
-:lua vim.pack.update()
+:Lazy update
 ```
 
 ## Health Check
