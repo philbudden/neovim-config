@@ -54,6 +54,34 @@ require('lazy').setup {
   { 'folke/todo-comments.nvim', opts = { signs = false } },
 
   {
+    'akinsho/toggleterm.nvim',
+    version = '*',
+    config = function()
+      require('toggleterm').setup {
+        direction = 'float',
+        start_in_insert = true,
+        persist_mode = true,
+        close_on_exit = true,
+        float_opts = {
+          border = 'curved',
+          width = function() return math.floor(vim.o.columns * 0.9) end,
+          height = function() return math.floor(vim.o.lines * 0.85) end,
+        },
+      }
+
+      local Terminal = require('toggleterm.terminal').Terminal
+      local shell = Terminal:new {
+        direction = 'float',
+        hidden = true,
+      }
+
+      local function toggle_shell() shell:toggle() end
+
+      vim.keymap.set({ 'n', 't' }, '<leader>tt', toggle_shell, { desc = '[T]oggle [T]erminal' })
+    end,
+  },
+
+  {
     'nvim-mini/mini.nvim',
     config = function()
       if vim.g.have_nerd_font then
