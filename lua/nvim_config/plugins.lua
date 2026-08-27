@@ -30,6 +30,7 @@ require('lazy').setup {
       spec = {
         { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
         { '<leader>t', group = '[T]oggle' },
+        { '<leader>g', group = '[G]it' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
         { 'gr', group = 'LSP Actions', mode = { 'n' } },
       },
@@ -75,8 +76,50 @@ require('lazy').setup {
         hidden = true,
       }
 
+      local lazygit = Terminal:new {
+        cmd = 'lazygit',
+        direction = 'float',
+        hidden = true,
+        close_on_exit = true,
+      }
+
+      local function current_dir()
+        local bufname = vim.api.nvim_buf_get_name(0)
+        local stat = bufname ~= '' and vim.uv.fs_stat(bufname) or nil
+
+        if stat and stat.type == 'directory' then return bufname end
+        if stat then return vim.fs.dirname(bufname) end
+        return vim.fn.getcwd()
+      end
+
+      local function git_root()
+        local dir = current_dir()
+        local root = vim.fn.systemlist { 'git', '-C', dir, 'rev-parse', '--show-toplevel' }
+
+        if vim.v.shell_error == 0 and root[1] and root[1] ~= '' then return root[1] end
+
+        vim.notify('LazyGit requires a Git repository', vim.log.levels.WARN)
+        return nil
+      end
+
       local function toggle_shell() shell:toggle() end
 
+      local function toggle_lazygit()
+        if vim.fn.executable 'lazygit' ~= 1 then
+          vim.notify('lazygit is not available on PATH', vim.log.levels.WARN)
+          return
+        end
+
+        if not lazygit.bufnr or not vim.api.nvim_buf_is_valid(lazygit.bufnr) then
+          local root = git_root()
+          if not root then return end
+          lazygit.dir = root
+        end
+
+        lazygit:toggle()
+      end
+
+      vim.keymap.set({ 'n', 't' }, '<leader>gg', toggle_lazygit, { desc = '[G]it Lazy[G]it' })
       vim.keymap.set({ 'n', 't' }, '<leader>tt', toggle_shell, { desc = '[T]oggle [T]erminal' })
     end,
   },
