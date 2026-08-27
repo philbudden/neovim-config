@@ -83,6 +83,20 @@ require('lazy').setup {
         close_on_exit = true,
       }
 
+      local copilot = Terminal:new {
+        cmd = 'copilot',
+        direction = 'float',
+        hidden = true,
+        close_on_exit = true,
+      }
+
+      local python = Terminal:new {
+        cmd = 'python3',
+        direction = 'float',
+        hidden = true,
+        close_on_exit = true,
+      }
+
       local function current_dir()
         local bufname = vim.api.nvim_buf_get_name(0)
         local stat = bufname ~= '' and vim.uv.fs_stat(bufname) or nil
@@ -102,15 +116,25 @@ require('lazy').setup {
         return nil
       end
 
-      local function toggle_shell() shell:toggle() end
+      local function git_root_or_current_dir() return git_root() or current_dir() end
 
-      local function toggle_lazygit()
-        if vim.fn.executable 'lazygit' ~= 1 then
-          vim.notify('lazygit is not available on PATH', vim.log.levels.WARN)
+      local function is_dead(term) return not term.bufnr or not vim.api.nvim_buf_is_valid(term.bufnr) end
+
+      local function toggle_command(term, executable, dir)
+        if vim.fn.executable(executable) ~= 1 then
+          vim.notify(executable .. ' is not available on PATH', vim.log.levels.WARN)
           return
         end
 
-        if not lazygit.bufnr or not vim.api.nvim_buf_is_valid(lazygit.bufnr) then
+        if is_dead(term) then term.dir = dir() end
+
+        term:toggle()
+      end
+
+      local function toggle_shell() shell:toggle() end
+
+      local function toggle_lazygit()
+        if is_dead(lazygit) then
           local root = git_root()
           if not root then return end
           lazygit.dir = root
@@ -119,7 +143,13 @@ require('lazy').setup {
         lazygit:toggle()
       end
 
+      local function toggle_copilot() toggle_command(copilot, 'copilot', git_root_or_current_dir) end
+
+      local function toggle_python() toggle_command(python, 'python3', current_dir) end
+
+      vim.keymap.set({ 'n', 't' }, '<leader>gc', toggle_copilot, { desc = '[G]itHub [C]opilot CLI' })
       vim.keymap.set({ 'n', 't' }, '<leader>gg', toggle_lazygit, { desc = '[G]it Lazy[G]it' })
+      vim.keymap.set({ 'n', 't' }, '<leader>tp', toggle_python, { desc = '[T]oggle [P]ython REPL' })
       vim.keymap.set({ 'n', 't' }, '<leader>tt', toggle_shell, { desc = '[T]oggle [T]erminal' })
     end,
   },
