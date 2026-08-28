@@ -47,6 +47,18 @@ To fetch plugin updates:
 :Lazy update
 ```
 
+## GitHub Copilot inline completions
+
+Neovim uses GitHub's official `github/copilot.vim` plugin for ordinary inline suggestions only. This is separate from the GitHub Copilot CLI terminal, which remains the agentic coding interface.
+
+`blink.cmp` retains `<Tab>` for normal completion and snippet navigation. In Insert mode, use:
+
+- `Ctrl-g Ctrl-a` — accept the current Copilot suggestion
+- `Ctrl-g Ctrl-d` — dismiss it
+- `Ctrl-g Ctrl-n` / `Ctrl-g Ctrl-p` — next / previous suggestion
+
+The plugin requires Node.js 18 or later; the supplied devcontainer installs Node.js 22. In a new environment, run `:Copilot setup` and complete its GitHub device-login flow; `:Copilot status` then reports whether inline suggestions are ready. The plugin’s documented setup is separate from Copilot CLI and does not document reuse of `gh` or forwarded environment-token credentials.
+
 ## Health Check
 
 Run:

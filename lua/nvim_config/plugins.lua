@@ -55,6 +55,21 @@ require('lazy').setup {
   { 'folke/todo-comments.nvim', opts = { signs = false } },
 
   {
+    'github/copilot.vim',
+    lazy = false,
+    init = function()
+      -- blink.cmp owns <Tab> for snippets and completion-menu navigation.
+      vim.g.copilot_no_tab_map = true
+    end,
+    config = function()
+      vim.keymap.set('i', '<C-g><C-a>', '<Plug>(copilot-accept)', { silent = true, desc = 'Copilot: accept suggestion' })
+      vim.keymap.set('i', '<C-g><C-d>', '<Plug>(copilot-dismiss)', { silent = true, desc = 'Copilot: dismiss suggestion' })
+      vim.keymap.set('i', '<C-g><C-n>', '<Plug>(copilot-next)', { silent = true, desc = 'Copilot: next suggestion' })
+      vim.keymap.set('i', '<C-g><C-p>', '<Plug>(copilot-previous)', { silent = true, desc = 'Copilot: previous suggestion' })
+    end,
+  },
+
+  {
     'akinsho/toggleterm.nvim',
     version = '*',
     config = function()
