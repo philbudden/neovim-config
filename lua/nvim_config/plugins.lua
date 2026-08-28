@@ -30,6 +30,7 @@ require('lazy').setup {
       spec = {
         { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
         { '<leader>t', group = '[T]oggle' },
+        { '<leader>g', group = '[G]it' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
         { 'gr', group = 'LSP Actions', mode = { 'n' } },
       },
@@ -52,6 +53,121 @@ require('lazy').setup {
 
   'NoahTheDuke/vim-just',
   { 'folke/todo-comments.nvim', opts = { signs = false } },
+
+  {
+    'github/copilot.vim',
+    lazy = false,
+    init = function()
+      -- blink.cmp owns <Tab> for snippets and completion-menu navigation.
+      vim.g.copilot_no_tab_map = true
+    end,
+    config = function()
+      vim.keymap.set('i', '<C-g><C-a>', '<Plug>(copilot-accept)', { silent = true, desc = 'Copilot: accept suggestion' })
+      vim.keymap.set('i', '<C-g><C-d>', '<Plug>(copilot-dismiss)', { silent = true, desc = 'Copilot: dismiss suggestion' })
+      vim.keymap.set('i', '<C-g><C-n>', '<Plug>(copilot-next)', { silent = true, desc = 'Copilot: next suggestion' })
+      vim.keymap.set('i', '<C-g><C-p>', '<Plug>(copilot-previous)', { silent = true, desc = 'Copilot: previous suggestion' })
+    end,
+  },
+
+  {
+    'akinsho/toggleterm.nvim',
+    version = '*',
+    config = function()
+      require('toggleterm').setup {
+        direction = 'float',
+        start_in_insert = true,
+        persist_mode = true,
+        close_on_exit = true,
+        float_opts = {
+          border = 'curved',
+          width = function() return math.floor(vim.o.columns * 0.9) end,
+          height = function() return math.floor(vim.o.lines * 0.85) end,
+        },
+      }
+
+      local Terminal = require('toggleterm.terminal').Terminal
+      local shell = Terminal:new {
+        direction = 'float',
+        hidden = true,
+      }
+
+      local lazygit = Terminal:new {
+        cmd = 'lazygit',
+        direction = 'float',
+        hidden = true,
+        close_on_exit = true,
+      }
+
+      local copilot = Terminal:new {
+        cmd = 'copilot',
+        direction = 'float',
+        hidden = true,
+        close_on_exit = true,
+      }
+
+      local python = Terminal:new {
+        cmd = 'python3',
+        direction = 'float',
+        hidden = true,
+        close_on_exit = true,
+      }
+
+      local function current_dir()
+        local bufname = vim.api.nvim_buf_get_name(0)
+        local stat = bufname ~= '' and vim.uv.fs_stat(bufname) or nil
+
+        if stat and stat.type == 'directory' then return bufname end
+        if stat then return vim.fs.dirname(bufname) end
+        return vim.fn.getcwd()
+      end
+
+      local function git_root()
+        local dir = current_dir()
+        local root = vim.fn.systemlist { 'git', '-C', dir, 'rev-parse', '--show-toplevel' }
+
+        if vim.v.shell_error == 0 and root[1] and root[1] ~= '' then return root[1] end
+
+        vim.notify('LazyGit requires a Git repository', vim.log.levels.WARN)
+        return nil
+      end
+
+      local function git_root_or_current_dir() return git_root() or current_dir() end
+
+      local function is_dead(term) return not term.bufnr or not vim.api.nvim_buf_is_valid(term.bufnr) end
+
+      local function toggle_command(term, executable, dir)
+        if vim.fn.executable(executable) ~= 1 then
+          vim.notify(executable .. ' is not available on PATH', vim.log.levels.WARN)
+          return
+        end
+
+        if is_dead(term) then term.dir = dir() end
+
+        term:toggle()
+      end
+
+      local function toggle_shell() shell:toggle() end
+
+      local function toggle_lazygit()
+        if is_dead(lazygit) then
+          local root = git_root()
+          if not root then return end
+          lazygit.dir = root
+        end
+
+        lazygit:toggle()
+      end
+
+      local function toggle_copilot() toggle_command(copilot, 'copilot', git_root_or_current_dir) end
+
+      local function toggle_python() toggle_command(python, 'python3', current_dir) end
+
+      vim.keymap.set({ 'n', 't' }, '<leader>gc', toggle_copilot, { desc = '[G]itHub [C]opilot CLI' })
+      vim.keymap.set({ 'n', 't' }, '<leader>gg', toggle_lazygit, { desc = '[G]it Lazy[G]it' })
+      vim.keymap.set({ 'n', 't' }, '<leader>tp', toggle_python, { desc = '[T]oggle [P]ython REPL' })
+      vim.keymap.set({ 'n', 't' }, '<leader>tt', toggle_shell, { desc = '[T]oggle [T]erminal' })
+    end,
+  },
 
   {
     'nvim-mini/mini.nvim',
@@ -112,19 +228,34 @@ require('lazy').setup {
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader>sc', builtin.commands, { desc = '[S]earch [C]ommands' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
-      vim.keymap.set('n', '<leader>/', function()
-        builtin.current_buffer_fuzzy_find(themes.get_dropdown {
-          winblend = 10,
-          previewer = false,
-        })
-      end, { desc = '[/] Fuzzily search in current buffer' })
-      vim.keymap.set('n', '<leader>s/', function()
-        builtin.live_grep {
-          grep_open_files = true,
-          prompt_title = 'Live Grep in Open Files',
-        }
-      end, { desc = '[S]earch [/] in Open Files' })
-      vim.keymap.set('n', '<leader>sn', function() builtin.find_files { cwd = vim.fn.stdpath 'config', follow = true } end, { desc = '[S]earch [N]eovim files' })
+      vim.keymap.set(
+        'n',
+        '<leader>/',
+        function()
+          builtin.current_buffer_fuzzy_find(themes.get_dropdown {
+            winblend = 10,
+            previewer = false,
+          })
+        end,
+        { desc = '[/] Fuzzily search in current buffer' }
+      )
+      vim.keymap.set(
+        'n',
+        '<leader>s/',
+        function()
+          builtin.live_grep {
+            grep_open_files = true,
+            prompt_title = 'Live Grep in Open Files',
+          }
+        end,
+        { desc = '[S]earch [/] in Open Files' }
+      )
+      vim.keymap.set(
+        'n',
+        '<leader>sn',
+        function() builtin.find_files { cwd = vim.fn.stdpath 'config', follow = true } end,
+        { desc = '[S]earch [N]eovim files' }
+      )
 
       vim.api.nvim_create_autocmd('LspAttach', {
         group = vim.api.nvim_create_augroup('telescope-lsp-attach', { clear = true }),
@@ -326,9 +457,7 @@ require('lazy').setup {
         if not vim.tbl_contains(installed_parsers, language) then return end
 
         pcall(vim.treesitter.start, args.buf, language)
-        if vim.treesitter.query.get(language, 'indents') then
-          vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
-        end
+        if vim.treesitter.query.get(language, 'indents') then vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()" end
       end
 
       vim.api.nvim_create_autocmd('FileType', {
